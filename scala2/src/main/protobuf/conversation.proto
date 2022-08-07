@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+import "scalapb/scalapb.proto";
+
+option java_multiple_files = true;
+option java_package = "server.grpc";
+
+package server.grpc;
+
+service ConversationService {
+    // The stream of incoming ClientCmd are
+    // sent out as corresponding ServerCmd from
+    // all clients to all clients.
+    rpc Post (stream ClientCmd) returns (stream ServerCmd) {}
+
+    rpc Auth (AuthReq) returns (AuthReply) {}
+}
+
+option (scalapb.options) = {
+    lenses: true,
+    preserve_unknown_fields: false,
+    //retain_source_code_info: true,
+    no_default_values_in_constructor: false, //
+    no_primitive_wrappers: true,
+    single_file: true,
+    preamble: "sealed trait Cmd extends scalapb.GeneratedMessage",
+    preamble: "sealed trait Auth extends scalapb.GeneratedMessage",
+};
+
+message AuthReq {
+    option (scalapb.message).extends = "Auth";
+}
+
+message AuthReply {
+    option (scalapb.message).extends = "Auth";
+}
+
+
+// The request message containing the user's name.
+message ClientCmd {
+    option (scalapb.message).extends = "Cmd";
+    string name = 1;
+    bytes content = 2;
+}
+
+// The response message containing the greetings
+message ServerCmd {
+    option (scalapb.message).extends = "Cmd";
+    string name = 1;
+    bytes content = 2;
+}
