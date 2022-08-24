@@ -22,22 +22,22 @@ object Bootstrap:
   def run(args: Array[String]): Unit =
 
     val appConf = scala2.Bridge.readAppConfig("conversation")
+    given sys: ActorSystem[Nothing] = ActorSystem(Behaviors.empty, "conversation", ConfigFactory.load())
+    given ec: ExecutionContext = sys.executionContext
+
     // SymmetricCryptography.createJKS(appConf.jksPath, appConf.jksPsw)
-    val crypto = SymmetricCryptography.getCryptography(appConf.jksPath, appConf.jksPsw)
+    // val crypto = SymmetricCryptography.getCryptography(appConf.jksPath, appConf.jksPsw)
 
     val host = Try(args(0)).getOrElse("127.0.0.1")
     val port = Try(args(1).toInt).getOrElse(appConf.port)
 
-    given sys: ActorSystem[Nothing] = ActorSystem(Behaviors.empty, "conversation", ConfigFactory.load())
-    given ec: ExecutionContext = sys.executionContext
     val logger = sys.log
-
     val shutdown = CoordinatedShutdown(sys)
 
     val terminationDeadline =
       sys.settings.config.getDuration("akka.coordinated-shutdown.default-phase-timeout").asScala
 
-    val (((sinkHub, dc), ks), srcHub) = ConversationServiceImpl.allocate(appConf, crypto.dec)
+    val (((sinkHub, dc), ks), srcHub) = ConversationServiceImpl.allocate(appConf /*, crypto.dec*/ )
 
     val grpcService: HttpRequest => Future[HttpResponse] =
       server.grpc.ConversationServiceHandler.withServerReflection(new ConversationServiceImpl(srcHub, sinkHub))

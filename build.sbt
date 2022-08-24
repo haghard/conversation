@@ -3,7 +3,6 @@ val scala2Version = "2.13.8"
 
 val akka = "2.6.19"
 val akkaHttp = "10.2.9"
-val lmdb    = "0.8.2"
 
 val scalac3Settings = Seq(
   scalacOptions ++= Seq(
@@ -45,6 +44,8 @@ lazy val scala2 = project
       "com.typesafe.akka" %% "akka-discovery" % akka,
       "com.typesafe.akka" %% "akka-stream" % akka,
       "com.github.pureconfig" %% "pureconfig" % "0.17.1",
+      "io.spray" %% "spray-json" % "1.3.6",
+      "ru.odnoklassniki" % "one-nio" % "1.5.0",
     )
   ).enablePlugins(AkkaGrpcPlugin)
 

@@ -18,9 +18,12 @@ import scala.util.{ Failure, Success }
 
 object ConversationServiceImpl:
 
+  //
+  val knownUsers = Set("BpB1m-4nZG6rMyPRVO8m7AbPvpjU7YUZIFy4ab1ve4M", "f1wzkLLuzOW3i6lZX7bAIiPZQOkRTRvFx8aCilAGsMA")
+
   def allocate(
-      appConf: AppConfig,
-      dec: shared.SymmetricCryptography.Decrypter,
+      appConf: AppConfig
+      // dec: shared.SymmetricCryptography.Decrypter,
     )(using system: ActorSystem[Nothing]
     ): (((Sink[ClientCmd, NotUsed], DrainingControl), UniqueKillSwitch), Source[ServerCmd, NotUsed]) =
     MergeHub
@@ -28,11 +31,13 @@ object ConversationServiceImpl:
       .map { msg =>
         // println(msg.content.toStringUtf8)
         // println(dec.decrypt(msg.content))
-        ServerCmd(msg.name, msg.content)
+        // ServerCmd(msg.name, msg.content)
+        // println(s"Uses: [${msg.content.keySet.mkString(",")}]")
+        ServerCmd(msg.content, msg.userInfo)
       }
       .backpressureTimeout(3.seconds) //
       .viaMat(KillSwitches.single)(Keep.both)
-      .toMat(BroadcastHub.sink[ServerCmd](2))(Keep.both)
+      .toMat(BroadcastHub.sink[ServerCmd](4))(Keep.both)
       .run()
 
 class ConversationServiceImpl(
@@ -83,21 +88,22 @@ class ConversationServiceImpl(
                   auth.trySuccess(Source.empty[ServerCmd])
                   source.runWith(Sink.cancelled[ClientCmd])
                 case Some(authMsg) =>
-                  if (authMsg.name.startsWith("a"))
-                    logger.info(s"authorized {}", authMsg.name)
+                  val usr = authMsg.userInfo.name
+                  if (ConversationServiceImpl.knownUsers.contains(usr))
+                    logger.info(s"authorized {}", usr)
                     source
                       .via(
                         Flow[ClientCmd].addAttributes(atts).watchTermination() { (_, d) =>
                           d.onComplete {
-                            case Success(_)  => client.trySuccess((authMsg.name, None))
-                            case Failure(ex) => client.trySuccess((authMsg.name, Some(ex)))
+                            case Success(_)  => client.trySuccess((usr, None))
+                            case Failure(ex) => client.trySuccess((usr, Some(ex)))
                           }
                         }
                       )
                       .runWith(sinkHub.addAttributes(atts))(mat)
                     auth.trySuccess(srcHub)
                   else
-                    logger.info(s"unauthorized {}", authMsg.name)
+                    logger.info(s"unauthorized {}", authMsg.userInfo.name)
                     auth.trySuccess(Source.empty[ServerCmd])
                     source.runWith(Sink.cancelled[ClientCmd])
           }
