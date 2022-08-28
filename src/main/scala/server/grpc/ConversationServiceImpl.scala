@@ -18,23 +18,15 @@ import scala.util.{ Failure, Success }
 
 object ConversationServiceImpl:
 
-  //
   val knownUsers = Set("BpB1m-4nZG6rMyPRVO8m7AbPvpjU7YUZIFy4ab1ve4M", "f1wzkLLuzOW3i6lZX7bAIiPZQOkRTRvFx8aCilAGsMA")
 
   def allocate(
       appConf: AppConfig
-      // dec: shared.SymmetricCryptography.Decrypter,
     )(using system: ActorSystem[Nothing]
     ): (((Sink[ClientCmd, NotUsed], DrainingControl), UniqueKillSwitch), Source[ServerCmd, NotUsed]) =
     MergeHub
       .sourceWithDraining[ClientCmd](appConf.bufferSize)
-      .map { msg =>
-        // println(msg.content.toStringUtf8)
-        // println(dec.decrypt(msg.content))
-        // ServerCmd(msg.name, msg.content)
-        // println(s"Uses: [${msg.content.keySet.mkString(",")}]")
-        ServerCmd(msg.content, msg.userInfo)
-      }
+      .map(msg => ServerCmd(msg.content, msg.userInfo))
       .backpressureTimeout(3.seconds) //
       .viaMat(KillSwitches.single)(Keep.both)
       .toMat(BroadcastHub.sink[ServerCmd](4))(Keep.both)

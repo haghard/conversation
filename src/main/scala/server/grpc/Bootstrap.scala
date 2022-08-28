@@ -7,7 +7,6 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{ HttpRequest, HttpResponse }
 import com.typesafe.config.ConfigFactory
-import shared.SymmetricCryptography
 
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.util.{ Failure, Success, Try }
@@ -25,9 +24,6 @@ object Bootstrap:
     given sys: ActorSystem[Nothing] = ActorSystem(Behaviors.empty, "conversation", ConfigFactory.load())
     given ec: ExecutionContext = sys.executionContext
 
-    // SymmetricCryptography.createJKS(appConf.jksPath, appConf.jksPsw)
-    // val crypto = SymmetricCryptography.getCryptography(appConf.jksPath, appConf.jksPsw)
-
     val host = Try(args(0)).getOrElse("127.0.0.1")
     val port = Try(args(1).toInt).getOrElse(appConf.port)
 
@@ -37,7 +33,7 @@ object Bootstrap:
     val terminationDeadline =
       sys.settings.config.getDuration("akka.coordinated-shutdown.default-phase-timeout").asScala
 
-    val (((sinkHub, dc), ks), srcHub) = ConversationServiceImpl.allocate(appConf /*, crypto.dec*/ )
+    val (((sinkHub, dc), ks), srcHub) = ConversationServiceImpl.allocate(appConf)
 
     val grpcService: HttpRequest => Future[HttpResponse] =
       server.grpc.ConversationServiceHandler.withServerReflection(new ConversationServiceImpl(srcHub, sinkHub))

@@ -9,16 +9,16 @@ import akka.util.ByteString
 import com.google.protobuf.UnsafeByteOperations
 import com.typesafe.config.ConfigFactory
 import server.grpc.{ ClientCmd, ConversationServiceClient, ServerCmd }
-import shared.{ ChatUser, ChatUserSnapshot, SymmetricCryptography }
+import shared.{ ChatUser, ChatUserSnapshot }
 
 import java.util.concurrent.{ ConcurrentHashMap, ThreadLocalRandom }
 import scala.concurrent.duration.*
 import scala.concurrent.{ ExecutionContext, Future, Promise, blocking }
 import shared.Exts.*
-import shared.SymmetricCryptography.Encrypter
 
 import java.nio.charset.StandardCharsets
 import java.security.PublicKey
+import shared.RsaEncryption
 
 object ConversationClient:
 
@@ -28,7 +28,7 @@ object ConversationClient:
     given ec: ExecutionContext = sys.executionContext
     val logger = sys.log
 
-    val userName = "a2"
+    val userName = "a1"
     val conf = GrpcClientSettings.fromConfig("server.grpc.ConversationService").withUserAgent(userName)
     val client = ConversationServiceClient(conf)
 
@@ -53,7 +53,7 @@ object ConversationClient:
     def streamingBroadcast(name: String /*, enc: Encrypter*/ ): Unit =
       logger.warn(s"Performing streaming requests: $name")
 
-      val line = "sdfhsdfh__sdfh_sdfhsdf-_S_fsdfHSD_f" + ThreadLocalRandom.current().nextLong()
+      val line = "sdfhsdfh_sdfh_sdfhsdf_S_fsdfHSD" + ThreadLocalRandom.current().nextLong()
 
       val requests: Source[ClientCmd, akka.NotUsed] =
         // val requests: Source[ClientCmd, Cancellable] =
@@ -64,22 +64,22 @@ object ConversationClient:
           .takeWhile(_ < 100)
           // .map(i => ClientCmd(name, UnsafeByteOperations.unsafeWrap(enc.encrypt(s"$line-$i"))))
           .map { _ =>
-            var contentPerUser: scala.collection.immutable.Map[String, com.google.protobuf.ByteString] = Map.empty
+            // message per user
+            var content: scala.collection.immutable.Map[String, com.google.protobuf.ByteString] = Map.empty
             users.forEach { (sender, senderPubKey) =>
-              contentPerUser = contentPerUser + (sender ->
+              content = content + (sender ->
                 UnsafeByteOperations.unsafeWrap(
-                  shared
-                    .RsaEncryption
+                  RsaEncryption
                     .encryptAndSend(userName, /*user.priv, sender,*/ senderPubKey, line)
                     .getBytes(StandardCharsets.UTF_8)
-                    .zip()
+                    // .zip()
                 ))
             }
             // TODO:
             // 1. Add compression/decompression      (+)
             // 2. Remove userInfo from each message  (-)
             val cmd = ClientCmd(
-              contentPerUser,
+              content,
               server
                 .grpc
                 .UserInfo(
@@ -114,7 +114,7 @@ object ConversationClient:
 
           serverCmd.content.get(user.handle.toString).foreach { msgBts =>
             logger.info(
-              s"$sender: ${shared.RsaEncryption.receiveAndDecrypt(new String(msgBts.toByteArray.unzip(), StandardCharsets.UTF_8), user.priv, user.pub)}"
+              s"$sender: ${RsaEncryption.receiveAndDecrypt(new String(msgBts.toByteArray /*.unzip()*/, StandardCharsets.UTF_8), user.priv, user.pub)}"
             )
           }
         }

@@ -45,7 +45,7 @@ lazy val scala2 = project
       "com.typesafe.akka" %% "akka-stream" % akka,
       "com.github.pureconfig" %% "pureconfig" % "0.17.1",
       "io.spray" %% "spray-json" % "1.3.6",
-      "ru.odnoklassniki" % "one-nio" % "1.5.0",
+      //"ru.odnoklassniki" % "one-nio" % "1.5.0",
     )
   ).enablePlugins(AkkaGrpcPlugin)
 

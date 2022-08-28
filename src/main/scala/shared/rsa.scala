@@ -28,6 +28,12 @@ import java.nio.file.{ Files, Path, Paths }
 def sha256(bts: Array[Byte]): Array[Byte] =
   MessageDigest.getInstance("SHA-256").digest(bts)
 
+def base64Encode(bs: Array[Byte]): String =
+  new String(Base64.getUrlEncoder.withoutPadding.encode(bs))
+
+def base64Decode(s: String): Option[Array[Byte]] =
+  Try(Base64.getUrlDecoder.decode(s)).toOption
+
 abstract class Base64EncodedBytes:
   def bytes: Array[Byte]
 
